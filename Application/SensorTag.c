@@ -1185,9 +1185,11 @@ void MysensorTag_updateAdvertisingData(void)
  uint8_t HumRawData[4]; // humidity sensor raw data
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
 
-// set parameter
+// turn on the humidity sensor and start to measure
  st1 =  Humidity_setParameter(SENSOR_CONF,1,&HumiditySensorON); // turn on
  //SensorTagHum_processCharChangeEvt(SENSOR_CONF); // enable humidity sensing
+
+ // start to measure humidity using a message Queue
  // SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENOSR_CONF);
 
 
