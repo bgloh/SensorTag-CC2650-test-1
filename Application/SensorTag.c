@@ -103,7 +103,7 @@
  */
 
 // How often to perform periodic event (in msec)
-#define ST_PERIODIC_EVT_PERIOD               1000
+#define ST_PERIODIC_EVT_PERIOD               2000
 
 
 // What is the advertising interval when device is discoverable
