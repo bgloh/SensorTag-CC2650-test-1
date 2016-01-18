@@ -2,8 +2,11 @@
   Filename:       SensorTag.c
   Revised:        $Date: 2013-11-20 20:28:12 +0100 (on, 20 nov 2013) $
   Revision:       $Revision: 36163 $
+
   Description:    This file is the SensorTag application's main body.
+
   Copyright 2015 Texas Instruments Incorporated. All rights reserved.
+
   IMPORTANT: Your use of this Software is limited to those specific rights
   granted under the terms of a software license agreement between the user
   who downloaded the software, his/her employer (which must be your employer)
@@ -16,6 +19,7 @@
   the foregoing purpose, you may not use, reproduce, copy, prepare derivative
   works of, modify, distribute, perform, display or sell this Software and/or
   its documentation for any purpose.
+
   YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
   PROVIDED ``AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
   INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
@@ -27,6 +31,7 @@
   OR CONSEQUENTIAL DAMAGES, LOST PROFITS OR LOST DATA, COST OF PROCUREMENT
   OF SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
   (INCLUDING BUT NOT LIMITED TO ANY DEFENSE THEREOF), OR OTHER SIMILAR COSTS.
+
   Should you have any questions regarding your right to use this Software,
   contact Texas Instruments Incorporated at www.TI.com.
 */
@@ -103,8 +108,8 @@
  */
 
 // How often to perform periodic event (in msec)
-#define ST_PERIODIC_EVT_PERIOD               1000
-
+#define ST_PERIODIC_EVT_PERIOD                       1000
+#define ST_USER_DEFINED_PERIODIC_EVT_PERIOD	         1000
 
 // What is the advertising interval when device is discoverable
 // (units of 625us, 160=100ms)
@@ -155,6 +160,7 @@
 #define ST_STATE_CHANGE_EVT                   0x0001
 #define ST_CHAR_CHANGE_EVT                    0x0002
 #define ST_PERIODIC_EVT                       0x0004
+#define ST_USER_DEFINED_PERIODIC_EVT		  0x0010   // user-defined event
 #ifdef FEATURE_OAD
 #define SBP_OAD_WRITE_EVT                     0x0008
 #endif //FEATURE_OAD
@@ -162,7 +168,7 @@
 // Misc.
 #define INVALID_CONNHANDLE                    0xFFFF
 #define TEST_INDICATION_BLINKS                5  // Number of blinks
-#define BLINK_DURATION                        20 // Milliseconds
+#define BLINK_DURATION                        5 // Milliseconds
 #define OAD_PACKET_SIZE                       18
 #define KEY_STATE_OFFSET                      13 // Offset in advertising data
 
@@ -204,6 +210,7 @@ static ICall_EntityID selfEntity;
 
 // Clock instances for internal periodic events.
 static Clock_Struct periodicClock;
+static Clock_Struct UserDefined_periodicClock;  // user-defined periodic clock
 
 // Queue object used for app messages
 static Queue_Struct appMsg;
@@ -415,6 +422,9 @@ static void SensorTag_init(void)
   // Create one-shot clocks for internal periodic events.
   Util_constructClock(&periodicClock, SensorTag_clockHandler,
                       ST_PERIODIC_EVT_PERIOD, 0, false, ST_PERIODIC_EVT);
+  // Create periodic clocks for internal periodic events
+  Util_constructClock(&UserDefined_periodicClock, SensorTag_clockHandler,
+                       ST_USER_DEFINED_PERIODIC_EVT_PERIOD, ST_USER_DEFINED_PERIODIC_EVT_PERIOD, false, ST_USER_DEFINED_PERIODIC_EVT);
 
   // Setup the GAP
   GAP_SetParamValue(TGAP_CONN_PAUSE_PERIPHERAL, DEFAULT_CONN_PAUSE_PERIPHERAL);
@@ -552,6 +562,9 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
   // Initialize application
   SensorTag_init();
 
+  // Start a user-defined clock
+  Util_startClock(&UserDefined_periodicClock);
+
   // dummy variable for data advertising
   uint8_t dummy;
   // Application main loop
@@ -576,7 +589,6 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
         {
           // Process inter-task message
           SensorTag_processStackMsg((ICall_Hdr *)pMsg);
-
         }
 
         if (pMsg)
@@ -603,7 +615,6 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
       SensorTagKeys_processEvent();
       SensorTagOpt_processSensorEvent();
       SensorTagMov_processSensorEvent();
-
     }
 
     if (!!(events & ST_PERIODIC_EVT))
@@ -620,19 +631,23 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
       if (gapProfileState == GAPROLE_CONNECTED)
       {
         SensorTag_performPeriodicTask();
-
       }
 
       // Blink green LED when advertising
       if (gapProfileState == GAPROLE_ADVERTISING)
       {
-    	SensorTag_blinkLed(Board_LED2,1);
-        MysensorTag_updateAdvertisingData(); // advertise sensor reading
+    	//SensorTag_blinkLed(Board_LED2,1);	 // blink greed LED
+        //MysensorTag_updateAdvertisingData(); // advertise sensor reading
 
         #ifdef FEATURE_LCD
         SensorTag_displayBatteryVoltage();
         #endif
       }
+    }
+    else if(events & ST_USER_DEFINED_PERIODIC_EVT)
+    {
+    	events &= ~ST_USER_DEFINED_PERIODIC_EVT;
+    	SensorTag_blinkLed(Board_LED1,1);
     }
 
     #ifdef FEATURE_OAD
@@ -1003,7 +1018,6 @@ static void SensorTag_performPeriodicTask(void)
 #ifdef FEATURE_REGISTER_SERVICE
   // Force notification on Register Data (if enabled)
   Register_setParameter(SENSOR_DATA,0,NULL);
-
 #endif
 }
 
@@ -1171,12 +1185,13 @@ void MysensorTag_updateAdvertisingData(void)
  uint8_t HumRawData[4]; // humidity sensor raw data
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
 
-// set parameter for HUMIDITY SENSING
+// set parameter
  st1 =  Humidity_setParameter(SENSOR_CONF,1,&HumiditySensorON); // turn on
- SensorTagHum_processCharChangeEvt(SENSOR_CONF); // enable humidity sensing
+ //SensorTagHum_processCharChangeEvt(SENSOR_CONF); // enable humidity sensing
+ // SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENOSR_CONF);
+
 
  // get parameter
-
  st2 =  Humidity_getParameter(SENSOR_PERI, &period);
  st3 =  Humidity_getParameter(SENSOR_CONF, &config);
  st4 =  Humidity_getParameter(SENSOR_DATA, &HumRawData);
@@ -1290,5 +1305,3 @@ static bool SensorTag_hasFactoryImage(void)
 
 /*******************************************************************************
 *******************************************************************************/
-//Status API Training Shop Blog About Pricing
-//© 2016 GitHub, Inc. Terms Privacy Security Contact Help
