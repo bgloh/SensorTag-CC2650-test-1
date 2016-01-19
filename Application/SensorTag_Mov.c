@@ -24,7 +24,7 @@
   its documentation for any purpose.
 
   YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
-  PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+  PROVIDED ë°ƒS ISï¿½WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
   INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
   NON-INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
   TEXAS INSTRUMENTS OR ITS LICENSORS BE LIABLE OR OBLIGATED UNDER CONTRACT,
@@ -295,6 +295,7 @@ void SensorTagMov_processSensorEvent(void)
 
         // Send data
         Movement_setParameter(SENSOR_DATA, SENSOR_DATA_LEN, sensorData);
+
       }
       else
       {
@@ -315,6 +316,7 @@ void SensorTagMov_processSensorEvent(void)
   }
 }
 
+
 /*********************************************************************
  * @fn      SensorTagMov_processCharChangeEvt
  *
@@ -329,6 +331,7 @@ void SensorTagMov_processCharChangeEvt(uint8_t paramID)
   switch (paramID)
   {
   case SENSOR_CONF:
+
     if ((sensorTestResult() & ST_MPU) == 0)
     {
       mpuConfig = ST_CFG_ERROR;
@@ -347,6 +350,7 @@ void SensorTagMov_processCharChangeEvt(uint8_t paramID)
       else
       {
         // Some axes on; power up and activate MPU
+    	SensorTag_blinkLed(Board_LED1,1);
         mpuConfig = newCfg;
         appStateSet(APP_STATE_ACTIVE);
         if (sensorMpu9250PowerIsOn())

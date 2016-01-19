@@ -110,7 +110,7 @@
 // How often to perform periodic event (in msec)
 
 #define ST_PERIODIC_EVT_PERIOD                       1000
-#define ST_USER_DEFINED_PERIODIC_EVT_PERIOD	         6500
+#define ST_USER_DEFINED_PERIODIC_EVT_PERIOD	         500
 
 
 // What is the advertising interval when device is discoverable
@@ -638,8 +638,8 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
       // Blink green LED when advertising
       if (gapProfileState == GAPROLE_ADVERTISING)
       {
-    	//SensorTag_blinkLed(Board_LED2,1);	 // blink greed LED
-        //MysensorTag_updateAdvertisingData(); // advertise sensor reading
+    	SensorTag_blinkLed(Board_LED2,1);	 // blink greed LED
+        MysensorTag_updateAdvertisingData(); // advertise sensor reading
 
         #ifdef FEATURE_LCD
         SensorTag_displayBatteryVoltage();
@@ -649,7 +649,7 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
     else if(events & ST_USER_DEFINED_PERIODIC_EVT)
     {
     	events &= ~ST_USER_DEFINED_PERIODIC_EVT;
-    	SensorTag_blinkLed(Board_LED1,1);
+    	//SensorTag_blinkLed(Board_LED1,1);
     }
 
     #ifdef FEATURE_OAD
@@ -1180,32 +1180,45 @@ void sensorTag_updateAdvertisingData(uint8_t keyStatus)
 
 void MysensorTag_updateAdvertisingData(void)
 {
-
- uint16_t RawTemperature, RawHumidity;
- bStatus_t st1,st2,st3, st4;
- uint8_t period, config, HumiditySensorON=1;
+ /* MOVEMENT SENSOR DATA FORMAT (18 BYTES)
+  * data[0:1]   : gyroX  data[2:3]   : gyroY  data[4:5]   : gyroZ
+  * data[6:7]   : accX   data[8:9]   : accY   data[10:11] : accZ
+  * data[12:13] : magX   data[14:15] : magY   data[16:17] : magZ
+  */
+ uint16_t RawTemperature, RawHumidity, RawAccX,RawAccY,RawAccZ;
+ bStatus_t st1,st2,st3, st4, st5, st6, st7;
+ uint8_t period, config, SensorON=1;
+ uint8_t MovConfig[2]; // read configuration
+ uint8_t movementSensorConfig[2] = {0x7F, 0x00};  // turn all axes on
  uint8_t HumRawData[4]; // humidity sensor raw data
+ uint8_t MovRawData[18]; // movement sensor raw data
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
+ float accX,accY,accZ; // accelerationX, accelerationY, accelerationZ in G
 
 // set parameter
- st1 =  Humidity_setParameter(SENSOR_CONF,1,&HumiditySensorON); // turn on
+ st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
+ st5 =  Movement_setParameter(SENSOR_CONF, 2, &movementSensorConfig);
+ SensorTagMov_processCharChangeEvt(SENSOR_CONF);
  //SensorTagHum_processCharChangeEvt(SENSOR_CONF); // enable humidity sensing
- // SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENOSR_CONF);
-
+ // SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENOSR_CONF); // turning sensor on using Queue
 
  // get parameter
  st2 =  Humidity_getParameter(SENSOR_PERI, &period);
  st3 =  Humidity_getParameter(SENSOR_CONF, &config);
  st4 =  Humidity_getParameter(SENSOR_DATA, &HumRawData);
+ st7 =  Movement_getParameter(SENSOR_DATA, &MovRawData);
+ st7 =  Movement_getParameter(SENSOR_CONF, &MovConfig);
 
- // raw temperature and humidity
+ // raw temperature and humidity, acceleration
  RawTemperature = HumRawData[0] | (HumRawData[1]<<8);
  RawHumidity = HumRawData[2] | (HumRawData[3]<<8);
+ RawAccX = MovRawData[6] | (MovRawData[7]<<8);
  sensorHdc1000Convert(RawTemperature, RawHumidity,&temperature, &humidity);
+ accX = sensorMpu9250AccConvert(RawAccX);
 
  // update advertisement data
- advertData[KEY_STATE_OFFSET+1] = (uint8_t)temperature;
- advertData[KEY_STATE_OFFSET+2] = (uint8_t)humidity;
+ advertData[KEY_STATE_OFFSET+1] = (uint8_t)(MovConfig[1]);
+ advertData[KEY_STATE_OFFSET+2] = (uint8_t)(MovConfig[0]);
  GAPRole_SetParameter(GAPROLE_ADVERT_DATA, sizeof(advertData), advertData);
 }
 
