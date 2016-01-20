@@ -616,7 +616,7 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
       // Process new data if available
       SensorTagKeys_processEvent();
       SensorTagOpt_processSensorEvent();
-      SensorTagMov_processSensorEvent();
+      MySensorTagMov_processSensorEvent();
     }
 
     if (!!(events & ST_PERIODIC_EVT))
@@ -1187,13 +1187,13 @@ void MysensorTag_updateAdvertisingData(void)
   */
  uint16_t RawTemperature, RawHumidity;
  int16_t RawAccX,RawAccY,RawAccZ;
- bStatus_t st1,st2,st3, st4, st5, st6, st7;
- uint8_t period, config, SensorON=1;
+ static bStatus_t st1,st2,st3, st4, st5, st6, st7;
+ uint8_t period, config, SensorON=1, MovPeriod;
  uint8_t MovConfig[2]; // read configuration
- uint8_t movementSensorConfig[2] = {0x7F, 0x02};  // turn all axes on
- uint8_t static HumRawData[4]; // humidity sensor raw data
- uint8_t static MovRawData[18]; // movement sensor raw data
- uint8_t static  counter = 0; // repetition counter
+ uint8_t movementSensorConfig[2] = {0x7F, 0x00};  // turn all axes on
+ static uint8_t HumRawData[4]; // humidity sensor raw data
+ static uint8_t MovRawData[18] = {9,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // movement sensor raw data
+ static uint8_t counter = 0; // repetition counter
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
  float accX,accY,accZ; // accelerationX, accelerationY, accelerationZ in G
 
@@ -1201,6 +1201,7 @@ void MysensorTag_updateAdvertisingData(void)
  st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
  st5 =  Movement_setParameter(SENSOR_CONF, 2, &movementSensorConfig);
  SensorTagMov_processCharChangeEvt(SENSOR_CONF);
+
  //SensorTagHum_processCharChangeEvt(SENSOR_CONF); // enable humidity sensing
  // SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENOSR_CONF); // turning sensor on using Queue
 
@@ -1210,13 +1211,15 @@ void MysensorTag_updateAdvertisingData(void)
  st4 =  Humidity_getParameter(SENSOR_DATA, &HumRawData);
  st6 =  Movement_getParameter(SENSOR_DATA, &MovRawData);
  st7 =  Movement_getParameter(SENSOR_CONF, &MovConfig);
+ st7 =  Movement_getParameter(SENSOR_PERI, &MovPeriod);
 
  // raw temperature and humidity, acceleration
  RawTemperature = HumRawData[0] | (HumRawData[1]<<8);
  RawHumidity = HumRawData[2] | (HumRawData[3]<<8);
- RawAccX = MovRawData[6] | (MovRawData[7]<<8);
+ //RawAccX = (int16_t)MovRawData[6] | (int16_t)(MovRawData[7]<<8);
  sensorHdc1000Convert(RawTemperature, RawHumidity,&temperature, &humidity);
- accX = sensorMpu9250AccConvert(RawAccX);
+// accX = sensorMpu9250AccConvert(RawAccX);
+
 
  // update advertisement data
  advertData[KEY_STATE_OFFSET+1] = counter++;

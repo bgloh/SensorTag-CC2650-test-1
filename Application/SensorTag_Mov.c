@@ -190,6 +190,47 @@ void SensorTagMov_init( void )
   Util_constructClock(&periodicClock, SensorTagMov_clockHandler,
                       1000, sensorPeriod, false, 0);
 }
+/*********************************************************************
+ * @fn      SensorTagMov_processSensorEvent
+ *
+ * @brief   SensorTag Gyroscope sensor event processor.
+ *
+ */
+void MySensorTagMov_processSensorEvent(void)
+{
+  if (sensorReadScheduled)
+  {
+    uint8_t axes;
+    static uint8_t counter=0;
+
+    axes = mpuConfig & MPU_AX_ALL;
+   if ((axes != ST_CFG_SENSOR_DISABLE) && (axes != ST_CFG_ERROR))
+    {
+      // Get interrupt status (clears interrupt)
+      mpuIntStatus = sensorMpu9250IntStatus();
+
+      // Process gyro and accelerometer
+      if (mpuDataRdy || appState == APP_STATE_ACTIVE)
+      {
+
+        if (mpuIntStatus & MPU_DATA_READY)
+        {
+          // Read gyro data
+          sensorMpu9250GyroRead((uint16_t*)sensorData);
+
+          // Read accelerometer data
+          sensorMpu9250AccRead((uint16_t*)&sensorData[6]);
+        }
+        mpuDataRdy = false;
+      }
+      // Send data
+        sensorData[0] = 100;
+        Movement_setParameter(SENSOR_DATA, SENSOR_DATA_LEN, sensorData);
+        sensorReadScheduled = false;
+        SensorTag_blinkLed(Board_LED1,1);
+    }
+  }
+}
 
 
 /*********************************************************************
@@ -206,6 +247,7 @@ void SensorTagMov_processInterrupt(void)
   Semaphore_post(sem);
 }
 
+//SensorTag_blinkLed(Board_LED1,sensorData[5]);
 
 /*********************************************************************
  * @fn      SensorTagMov_processSensorEvent
@@ -218,6 +260,7 @@ void SensorTagMov_processSensorEvent(void)
   if (sensorReadScheduled)
   {
     uint8_t axes;
+    static uint8_t counter=0;
 
     axes = mpuConfig & MPU_AX_ALL;
     if ((axes != ST_CFG_SENSOR_DISABLE) && (axes != ST_CFG_ERROR))
@@ -244,7 +287,6 @@ void SensorTagMov_processSensorEvent(void)
 
           // Read accelerometer data
           sensorMpu9250AccRead((uint16_t*)&sensorData[6]);
-          SensorTag_blinkLed(Board_LED1,10);
 
 
           if (shakeDetected)
