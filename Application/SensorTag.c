@@ -1185,13 +1185,15 @@ void MysensorTag_updateAdvertisingData(void)
   * data[6:7]   : accX   data[8:9]   : accY   data[10:11] : accZ
   * data[12:13] : magX   data[14:15] : magY   data[16:17] : magZ
   */
- uint16_t RawTemperature, RawHumidity, RawAccX,RawAccY,RawAccZ;
+ uint16_t RawTemperature, RawHumidity;
+ int16_t RawAccX,RawAccY,RawAccZ;
  bStatus_t st1,st2,st3, st4, st5, st6, st7;
  uint8_t period, config, SensorON=1;
  uint8_t MovConfig[2]; // read configuration
- uint8_t movementSensorConfig[2] = {0x7F, 0x00};  // turn all axes on
- uint8_t HumRawData[4]; // humidity sensor raw data
- uint8_t MovRawData[18]; // movement sensor raw data
+ uint8_t movementSensorConfig[2] = {0x7F, 0x02};  // turn all axes on
+ uint8_t static HumRawData[4]; // humidity sensor raw data
+ uint8_t static MovRawData[18]; // movement sensor raw data
+ uint8_t static  counter = 0; // repetition counter
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
  float accX,accY,accZ; // accelerationX, accelerationY, accelerationZ in G
 
@@ -1206,7 +1208,7 @@ void MysensorTag_updateAdvertisingData(void)
  st2 =  Humidity_getParameter(SENSOR_PERI, &period);
  st3 =  Humidity_getParameter(SENSOR_CONF, &config);
  st4 =  Humidity_getParameter(SENSOR_DATA, &HumRawData);
- st7 =  Movement_getParameter(SENSOR_DATA, &MovRawData);
+ st6 =  Movement_getParameter(SENSOR_DATA, &MovRawData);
  st7 =  Movement_getParameter(SENSOR_CONF, &MovConfig);
 
  // raw temperature and humidity, acceleration
@@ -1217,8 +1219,8 @@ void MysensorTag_updateAdvertisingData(void)
  accX = sensorMpu9250AccConvert(RawAccX);
 
  // update advertisement data
- advertData[KEY_STATE_OFFSET+1] = (uint8_t)(MovConfig[1]);
- advertData[KEY_STATE_OFFSET+2] = (uint8_t)(MovConfig[0]);
+ advertData[KEY_STATE_OFFSET+1] = counter++;
+ advertData[KEY_STATE_OFFSET+2] = MovRawData[0];
  GAPRole_SetParameter(GAPROLE_ADVERT_DATA, sizeof(advertData), advertData);
 }
 

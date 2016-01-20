@@ -220,7 +220,6 @@ void SensorTagMov_processSensorEvent(void)
     uint8_t axes;
 
     axes = mpuConfig & MPU_AX_ALL;
-
     if ((axes != ST_CFG_SENSOR_DISABLE) && (axes != ST_CFG_ERROR))
     {
       // Get interrupt status (clears interrupt)
@@ -245,6 +244,8 @@ void SensorTagMov_processSensorEvent(void)
 
           // Read accelerometer data
           sensorMpu9250AccRead((uint16_t*)&sensorData[6]);
+          SensorTag_blinkLed(Board_LED1,10);
+
 
           if (shakeDetected)
           {
@@ -350,7 +351,7 @@ void SensorTagMov_processCharChangeEvt(uint8_t paramID)
       else
       {
         // Some axes on; power up and activate MPU
-    	SensorTag_blinkLed(Board_LED1,1);
+
         mpuConfig = newCfg;
         appStateSet(APP_STATE_ACTIVE);
         if (sensorMpu9250PowerIsOn())
@@ -422,6 +423,7 @@ static void SensorTagMov_clockHandler(UArg arg)
   // Schedule readout periodically
   sensorReadScheduled = true;
   Semaphore_post(sem);
+
 }
 
 
