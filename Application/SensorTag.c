@@ -328,6 +328,7 @@ static void SensorTag_callback(PIN_Handle handle, PIN_Id pinId);
 static bool SensorTag_hasFactoryImage(void);
 static void SensorTag_setDeviceInfo(void);
 static void StartSensor(void) ; // start sensor
+static int16_t uint8ToInt16(uint8_t LB, uint8_t  HB); // convert uint8 to int16
 
 
 #ifdef FACTORY_IMAGE
@@ -1197,6 +1198,20 @@ static void StartSensor(void)
     SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_MOV, SENSOR_CONF);
 }
 
+/**
+ * Converts a two byte array to an integer
+ * @param LB: low byte, HB : high byte
+ * @return an int representing the unsigned short
+ */
+static int16_t uint8ToInt16(uint8_t LB, uint8_t  HB)
+{
+    int16_t data = 0;
+    data |= HB & 0xFF;
+    data <<= 8;
+    data |= LB & 0xFF;
+    return data;
+}
+
 void MysensorTag_updateAdvertisingData(void)
 {
  /* MOVEMENT SENSOR DATA FORMAT (18 BYTES)
@@ -1205,13 +1220,12 @@ void MysensorTag_updateAdvertisingData(void)
   * data[12:13] : magX   data[14:15] : magY   data[16:17] : magZ
   */
  uint16_t RawTemperature, RawHumidity;
- int16_t RawAccX,RawAccY,RawAccZ;
+ int16_t RawAccX,RawAccY,RawAccZ; // accelerations in 16bit signed integer
  static bStatus_t st1,st2,st3, st4, st5, st6, st7;
  uint8_t period, config, SensorON=1, MovPeriod;
  uint8_t MovConfig[2]; // read configuration
- uint8_t movementSensorConfig[2] = {0x7E, 0x00};  // turn all axes on
  static uint8_t HumRawData[4]; // humidity sensor raw data
- static uint8_t MovRawData[18]; // {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // movement sensor raw data
+ static uint8_t MovRawData[18] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // movement sensor raw data
  static uint8_t counter = 0; // repetition counter
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
  float accX,accY,accZ; // accelerationX, accelerationY, accelerationZ in G
@@ -1235,14 +1249,15 @@ void MysensorTag_updateAdvertisingData(void)
  // raw temperature and humidity, acceleration
  RawTemperature = HumRawData[0] | (HumRawData[1]<<8);
  RawHumidity = HumRawData[2] | (HumRawData[3]<<8);
- RawAccZ = (int16_t)(MovRawData[10] | (MovRawData[11]<<8));
+ RawAccZ =   uint8ToInt16(MovRawData[10],MovRawData[11]);
  sensorHdc1000Convert(RawTemperature, RawHumidity,&temperature, &humidity);
- accZ = sensorMpu9250AccConvert(RawAccZ);
 
+ // convert raw acc value into in G at max. 4G configuration(1)
+ accZ = (RawAccZ * 1.0) / 32768 * 4;
 
  // update advertisement data
- advertData[KEY_STATE_OFFSET+1] = (uint8_t)(accZ);
- advertData[KEY_STATE_OFFSET+2] = MovRawData[10];
+ advertData[KEY_STATE_OFFSET+1] = MovConfig[1];
+ advertData[KEY_STATE_OFFSET+2] = (uint8_t)(accZ * 10);
  GAPRole_SetParameter(GAPROLE_ADVERT_DATA, sizeof(advertData), advertData);
 }
 

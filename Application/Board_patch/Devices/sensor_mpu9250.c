@@ -369,7 +369,7 @@ bool sensorMpu9250Reset(void)
   if (ret)
   {
     // Initial configuration
-    sensorMpu9250AccSetRange(ACC_RANGE_8G);
+    sensorMpu9250AccSetRange(ACC_RANGE_4G);
     sensorMagInit();
 
     // Power save
