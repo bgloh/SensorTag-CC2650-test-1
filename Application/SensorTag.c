@@ -327,6 +327,8 @@ static void SensorTag_enqueueMsg(uint8_t event, uint8_t serviceID, uint8_t param
 static void SensorTag_callback(PIN_Handle handle, PIN_Id pinId);
 static bool SensorTag_hasFactoryImage(void);
 static void SensorTag_setDeviceInfo(void);
+static void StartSensor(void) ; // start sensor
+
 
 #ifdef FACTORY_IMAGE
 static bool SensorTag_saveFactoryImage(void);
@@ -569,6 +571,10 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
 
   // dummy variable for data advertising
   uint8_t dummy;
+
+  // start a sensor
+  StartSensor();
+
   // Application main loop
   for (;;)
   {
@@ -1177,6 +1183,19 @@ void sensorTag_updateAdvertisingData(uint8_t keyStatus)
   GAPRole_SetParameter(GAPROLE_ADVERT_DATA, sizeof(advertData), advertData);
 }
 
+/*
+ * start sensor
+ */
+static void StartSensor(void)
+{
+	uint8_t SensorON = 1;
+	uint8_t movementSensorConfig[2] = {0x7F, 0x00};  // turn all axes on
+	static bStatus_t st1,st2,st3, st4, st5, st6, st7;
+	st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
+	st5 =  Movement_setParameter(SENSOR_CONF,2, &movementSensorConfig);
+	SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENSOR_CONF); // turning sensor on using
+    SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_MOV, SENSOR_CONF);
+}
 
 void MysensorTag_updateAdvertisingData(void)
 {
@@ -1190,17 +1209,17 @@ void MysensorTag_updateAdvertisingData(void)
  static bStatus_t st1,st2,st3, st4, st5, st6, st7;
  uint8_t period, config, SensorON=1, MovPeriod;
  uint8_t MovConfig[2]; // read configuration
- uint8_t movementSensorConfig[2] = {0x7F, 0x00};  // turn all axes on
+ uint8_t movementSensorConfig[2] = {0x7E, 0x00};  // turn all axes on
  static uint8_t HumRawData[4]; // humidity sensor raw data
- static uint8_t MovRawData[18] = {9,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // movement sensor raw data
+ static uint8_t MovRawData[18]; // {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // movement sensor raw data
  static uint8_t counter = 0; // repetition counter
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
  float accX,accY,accZ; // accelerationX, accelerationY, accelerationZ in G
 
 // set parameter
- st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
- st5 =  Movement_setParameter(SENSOR_CONF, 2, &movementSensorConfig);
- SensorTagMov_processCharChangeEvt(SENSOR_CONF);
+// st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
+// st5 =  Movement_setParameter(SENSOR_CONF, 2, &movementSensorConfig);
+// SensorTagMov_processCharChangeEvt(SENSOR_CONF);
 
  //SensorTagHum_processCharChangeEvt(SENSOR_CONF); // enable humidity sensing
  // SensorTag_enqueueMsg(ST_CHAR_CHANGE_EVT, SERVICE_ID_HUM, SENOSR_CONF); // turning sensor on using Queue
@@ -1216,14 +1235,14 @@ void MysensorTag_updateAdvertisingData(void)
  // raw temperature and humidity, acceleration
  RawTemperature = HumRawData[0] | (HumRawData[1]<<8);
  RawHumidity = HumRawData[2] | (HumRawData[3]<<8);
- //RawAccX = (int16_t)MovRawData[6] | (int16_t)(MovRawData[7]<<8);
+ RawAccZ = (int16_t)(MovRawData[10] | (MovRawData[11]<<8));
  sensorHdc1000Convert(RawTemperature, RawHumidity,&temperature, &humidity);
-// accX = sensorMpu9250AccConvert(RawAccX);
+ accZ = sensorMpu9250AccConvert(RawAccZ);
 
 
  // update advertisement data
- advertData[KEY_STATE_OFFSET+1] = counter++;
- advertData[KEY_STATE_OFFSET+2] = MovRawData[0];
+ advertData[KEY_STATE_OFFSET+1] = (uint8_t)(accZ);
+ advertData[KEY_STATE_OFFSET+2] = MovRawData[10];
  GAPRole_SetParameter(GAPROLE_ADVERT_DATA, sizeof(advertData), advertData);
 }
 
