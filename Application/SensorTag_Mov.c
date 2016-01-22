@@ -220,7 +220,7 @@ void MySensorTagMov_processSensorEvent(void)
 
           // Read accelerometer data
           sensorMpu9250AccRead((uint16_t*)&sensorData[6]);
-          SensorTag_blinkLed(Board_LED1,10);
+
         }
         mpuDataRdy = false;
       }
@@ -339,7 +339,7 @@ void SensorTagMov_processSensorEvent(void)
 
         // Send data
         Movement_setParameter(SENSOR_DATA, SENSOR_DATA_LEN, sensorData);
-
+        SensorTag_blinkLed(Board_LED1,1);
       }
       else
       {

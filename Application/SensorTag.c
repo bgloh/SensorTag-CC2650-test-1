@@ -118,7 +118,7 @@
 #define DEFAULT_ADVERTISING_INTERVAL          160
 
 // General discoverable mode advertises indefinitely
-#define DEFAULT_DISCOVERABLE_MODE             GAP_ADTYPE_FLAGS_LIMITED
+#define DEFAULT_DISCOVERABLE_MODE             GAP_ADTYPE_FLAGS_GENERAL
 
 // Minimum connection interval (units of 1.25ms, 80=100ms) if automatic
 // parameter update request is enabled
@@ -509,6 +509,7 @@ static void SensorTag_init(void)
   else
   {
     SensorTag_blinkLed(Board_LED1,TEST_INDICATION_BLINKS);
+    SensorTag_blinkLed(Board_LED1,5);
   }
 
 #ifdef FACTORY_IMAGE
@@ -623,7 +624,7 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
       // Process new data if available
       SensorTagKeys_processEvent();
       SensorTagOpt_processSensorEvent();
-      MySensorTagMov_processSensorEvent();
+      SensorTagMov_processSensorEvent();
     }
 
     if (!!(events & ST_PERIODIC_EVT))
@@ -648,6 +649,7 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
     	SensorTag_blinkLed(Board_LED2,1);	 // blink greed LED
         MysensorTag_updateAdvertisingData(); // advertise sensor reading
 
+
         #ifdef FEATURE_LCD
         SensorTag_displayBatteryVoltage();
         #endif
@@ -656,7 +658,7 @@ static void SensorTag_taskFxn(UArg a0, UArg a1)
     else if(events & ST_USER_DEFINED_PERIODIC_EVT)
     {
     	events &= ~ST_USER_DEFINED_PERIODIC_EVT;
-    	//SensorTag_blinkLed(Board_LED1,1);
+
     }
 
     #ifdef FEATURE_OAD
@@ -775,7 +777,6 @@ static void SensorTag_processStateChangeEvt(gaprole_States_t newState)
       uint8_t ownAddress[B_ADDR_LEN];
       uint8_t systemId[DEVINFO_SYSTEM_ID_LEN];
 
-      SensorTag_blinkLed(Board_LED2, 5);
 
       GAPRole_GetParameter(GAPROLE_BD_ADDR, ownAddress);
 

@@ -274,7 +274,7 @@ static void sensorTaskFxn(UArg a0, UArg a1)
   // Initialize the task
   sensorTaskInit();
 
-  //SensorTag_blinkLed(Board_LED1,200); // indicate whether this function is called
+
 
   // Deactivate task (active only when measurement is enabled)
   Task_setPri(Task_handle(&sensorTask), -1);
@@ -286,7 +286,6 @@ static void sensorTaskFxn(UArg a0, UArg a1)
     if (sensorConfig == ST_CFG_SENSOR_ENABLE)
     {
       Data_t data;
-	  SensorTag_blinkLed(Board_LED1,5); // indicate whether this function is called
 
       // 1. Start temperature measurement
       sensorHdc1000Start();
