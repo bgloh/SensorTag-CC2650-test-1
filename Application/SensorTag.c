@@ -118,7 +118,7 @@
 #define DEFAULT_ADVERTISING_INTERVAL          160
 
 // General discoverable mode advertises indefinitely
-#define DEFAULT_DISCOVERABLE_MODE             GAP_ADTYPE_FLAGS_GENERAL
+#define DEFAULT_DISCOVERABLE_MODE             GAP_ADTYPE_FLAGS_LIMITED
 
 // Minimum connection interval (units of 1.25ms, 80=100ms) if automatic
 // parameter update request is enabled
@@ -268,15 +268,19 @@ static uint8_t advertData[] =
 #endif
 
   // Manufacturer specific advertising data
-  0x08,
+  0x0C,
   GAP_ADTYPE_MANUFACTURER_SPECIFIC,
   LO_UINT16(TI_COMPANY_ID),
   HI_UINT16(TI_COMPANY_ID),
   TI_ST_DEVICE_ID,
   TI_ST_KEY_DATA_ID,
   0x00,                                    // Key state
-  0xFF,									   // MY DATA1
-  0xFE                                     // MY DATA2
+  0xFF,									   // MY DATA1 : accX low byte
+  0xFF,                                    // MY DATA2 : accX high byte
+  0xFF,									   // MY DATA3 : accY low byte
+  0xFF,                                    // MY DATA4 : accY high byte
+  0xFF,									   // MY DATA5 : accZ low byte
+  0xFF                                     // MY DATA6 : accZ high byte
 };
 
 // GAP GATT Attributes
@@ -1191,7 +1195,7 @@ void sensorTag_updateAdvertisingData(uint8_t keyStatus)
 static void StartSensor(void)
 {
 	uint8_t SensorON = 1;
-	uint8_t movementSensorConfig[2] = {0x7F, 0x00};  // turn all axes on
+	uint8_t movementSensorConfig[2] = {0x7E, 0x01};  // turn all axes on
 	static bStatus_t st1,st2,st3, st4, st5, st6, st7;
 	st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
 	st5 =  Movement_setParameter(SENSOR_CONF,2, &movementSensorConfig);
@@ -1230,7 +1234,7 @@ void MysensorTag_updateAdvertisingData(void)
  static uint8_t counter = 0; // repetition counter
  float temperature,humidity; // temperature and humidity measurements in Celcius and %
  float accX,accY,accZ; // accelerationX, accelerationY, accelerationZ in G
-
+ static uint8_t adcRange; //adc range
 // set parameter
 // st1 =  Humidity_setParameter(SENSOR_CONF,1,&SensorON); // turn on
 // st5 =  Movement_setParameter(SENSOR_CONF, 2, &movementSensorConfig);
@@ -1254,11 +1258,16 @@ void MysensorTag_updateAdvertisingData(void)
  sensorHdc1000Convert(RawTemperature, RawHumidity,&temperature, &humidity);
 
  // convert raw acc value into in G at max. 4G configuration(1)
- accZ = (RawAccZ * 1.0) / 32768 * 4;
+ adcRange = sensorMpu9250AccReadRange() * 4; // 0:2G, 1:4G, 2:8G, 3:16G
+ accZ = (RawAccZ * 1.0) / 32768 * adcRange;
 
  // update advertisement data
- advertData[KEY_STATE_OFFSET+1] = MovConfig[1];
- advertData[KEY_STATE_OFFSET+2] = (uint8_t)(accZ * 10);
+ advertData[KEY_STATE_OFFSET+1] = MovRawData[6];   //accX Low Byte
+ advertData[KEY_STATE_OFFSET+2] = MovRawData[7];   //accX High Byte
+ advertData[KEY_STATE_OFFSET+3] = MovRawData[8];   //accY Low Byte
+ advertData[KEY_STATE_OFFSET+4] = MovRawData[9];   //accY High Byte
+ advertData[KEY_STATE_OFFSET+5] = MovRawData[10];  //accZ Low Byte
+ advertData[KEY_STATE_OFFSET+6] = MovRawData[11];  //accZ High Byte
  GAPRole_SetParameter(GAPROLE_ADVERT_DATA, sizeof(advertData), advertData);
 }
 
